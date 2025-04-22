@@ -41,7 +41,7 @@ COPY . .
 RUN python agent.py download-files
 
 # expose healthcheck port
-EXPOSE 8081
+EXPOSE 8000
 
 # Run the application.
 CMD ["python", "agent.py", "start"]
