@@ -1,133 +1,125 @@
-"this is a Breezeflow LLM plugin for LiveKit, just a test code snippet, actual code is in breeze-voice/livekit/plugins/breezeflow/__init__.py"
+from __future__ import annotations
 
 import json
 import time
 import logging
-from dataclasses import asdict, dataclass
-from typing import Any, NotRequired, TypedDict
-
 import aiohttp
-from livekit.agents import llm
-from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions, NotGivenOr, NOT_GIVEN
+from typing import Any
+from dataclasses import dataclass
+
+from livekit.agents import (
+    APIConnectionError, 
+    APIStatusError,
+    APITimeoutError,
+    llm,
+)
+from livekit.agents.types import (
+    NOT_GIVEN,
+    APIConnectOptions,
+    NotGivenOr,
+    DEFAULT_API_CONNECT_OPTIONS
+)
 
 logger = logging.getLogger(__name__)
 
 @dataclass
-class BreezeflowMessage:
-    """Message format for Breezeflow API"""
-    id: str
-    text: str
-    role: str
-
-class BreezeflowConfig(TypedDict):
+class _LLMOptions:
     chatbot_id: str
-    api_url: NotRequired[str]
+    api_url: str
 
-class BreezeflowLLM(llm.LLM):
-    """Implementation of Breezeflow's chat API as an LLM plugin"""
-
+class LLM(llm.LLM):
     def __init__(
         self,
         *,
         chatbot_id: str,
-        api_url: str = "https://breezeflow.io/api/agent/chat",
-    ):
+        api_url: str = "https://staging.breezeflow.io/api/agent/chat",
+    ) -> None:
         super().__init__()
-        self._chatbot_id = chatbot_id
-        self._api_url = api_url
-
-    async def chat(
-        self,
-        *,
-        chat_ctx: llm.ChatContext,
-        tools: list[llm.FunctionTool] | None = None,
-        conn_options: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
-        **kwargs: Any,
-    ) -> llm.LLMStream:
-        return BreezeflowStream(
-            llm=self,
-            chat_ctx=chat_ctx,
-            tools=tools or [],
-            chatbot_id=self._chatbot_id,
-            api_url=self._api_url,
-            conn_options=conn_options,
+        self._opts = _LLMOptions(
+            chatbot_id=chatbot_id,
+            api_url=api_url,
         )
 
-class BreezeflowStream(llm.LLMStream):
-    def __init__(
+    def chat(
         self,
-        llm: BreezeflowLLM,
         *,
         chat_ctx: llm.ChatContext,
-        tools: list[llm.FunctionTool],
+        tools: list | None = None,
+        conn_options: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
+        extra_kwargs: NotGivenOr[dict[str, Any]] = NOT_GIVEN,
+        fnc_ctx: Any = None,
+    ) -> LLMStream:
+        return LLMStream(
+            self,
+            chatbot_id=self._opts.chatbot_id,
+            api_url=self._opts.api_url,
+            chat_ctx=chat_ctx,
+            conn_options=conn_options,
+            fnc_ctx=fnc_ctx,
+        )
+
+class LLMStream(llm.LLMStream):
+    def __init__(
+        self,
+        llm: LLM,
+        *,
         chatbot_id: str,
         api_url: str,
+        chat_ctx: llm.ChatContext,
         conn_options: APIConnectOptions,
-    ):
-        super().__init__(llm, chat_ctx=chat_ctx, tools=tools, conn_options=conn_options)
+        fnc_ctx: Any = None,
+    ) -> None:
+        super().__init__(
+            llm=llm, 
+            chat_ctx=chat_ctx, 
+            conn_options=conn_options,
+            fnc_ctx=fnc_ctx
+        )
         self._chatbot_id = chatbot_id
         self._api_url = api_url
 
     async def _run(self) -> None:
+        messages = []
+        for msg in self._chat_ctx.messages:
+            messages.append({
+                "id": str(time.time()),
+                "text": msg.content,
+                "role": "assistant" if msg.role == "model" else msg.role
+            })
+
         try:
-            # Convert context messages to Breezeflow format
-            messages = []
-            for msg in self._chat_ctx.messages:
-                if msg.text:
-                    messages.append(
-                        BreezeflowMessage(
-                            id=str(time.time()),
-                            text=msg.text,
-                            role="assistant" if msg.role == "model" else msg.role
-                        )
-                    )
-
-            # Get the last user message
-            last_message = messages[-1].text if messages else ""
-            messages_dict = [asdict(msg) for msg in messages]
-
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self._api_url}?id={self._chatbot_id}",
                     headers={"Content-Type": "application/json"},
                     json={
-                        "message": last_message,
-                        "messages": messages_dict,
+                        "message": messages[-1]["text"],
+                        "messages": messages,
                     }
                 ) as response:
                     if not response.ok:
-                        raise llm.APIStatusError(
+                        raise APIStatusError(
                             f"Breezeflow API error: {response.status}",
-                            status_code=response.status
+                            status_code=response.status,
+                            request_id="",
+                            body="",
+                            retryable=True
                         )
 
-                    async for chunk in response.content:
-                        chunk_text = chunk.decode('utf-8').strip()
-                        if not chunk_text:
-                            continue
-                            
-                        if chunk_text.startswith("0:"):
+                    async for line in response.content:
+                        line = line.decode().strip()
+                        if line and line.startswith("0:"):
                             try:
-                                content = json.loads(chunk_text[2:])
-                                self._event_ch.send_nowait(
-                                    llm.ChatChunk(
-                                        id=str(time.time()),
-                                        delta=llm.ChoiceDelta(
-                                            content=content,
-                                            role="assistant"
-                                        )
-                                    )
+                                content = json.loads(line[2:])
+                                chunk = llm.ChatChunk(
+                                    request_id=str(time.time()),
+                                    choices=[llm.Choice(delta=llm.ChoiceDelta(role="assistant", content=content))]
                                 )
-                            except json.JSONDecodeError as e:
-                                logger.error(f"Error parsing chunk: {e}")
+                                self._event_ch.send_nowait(chunk)
+                            except json.JSONDecodeError:
+                                continue
 
+        except aiohttp.ClientError as e:
+            raise APITimeoutError(retryable=True) from e
         except Exception as e:
-            logger.exception("Error in Breezeflow service")
-            raise llm.APIConnectionError(retryable=True) from e
-
-# Example usage:
-"""
-llm=breezeflow.BreezeflowLLM(
-    chatbot_id="your-chatbot-id",
-)
-"""
+            raise APIConnectionError(retryable=True) from e

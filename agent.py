@@ -15,9 +15,9 @@ from livekit.plugins import (
     deepgram,
     noise_cancellation,
     silero,
-    turn_detector,
-    breezeflow,
+    turn_detector
 )
+from breezeflowLLm import LLM as BreezeflowLLM
 
 from livekit.plugins.deepgram import tts
 
@@ -53,7 +53,7 @@ async def entrypoint(ctx: JobContext):
     agent = VoicePipelineAgent(
         vad=ctx.proc.userdata["vad"],
         stt=deepgram.STT(),
-        llm=breezeflow.LLM(
+        llm=BreezeflowLLM(
             chatbot_id="b59bfa1b-695b-4033-9b49-e715ca3fd7f9",
             # temperature=0.8,
         ),
