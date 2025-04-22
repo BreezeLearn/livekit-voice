@@ -126,8 +126,8 @@ async def start_agent_endpoint(request: StartAgentRequest):
 
 # Optional: Endpoint to check status or stop agents could be added here.
 
-# --- Main Execution (for running with uvicorn) ---
-if __name__ == "__main__":
-    import uvicorn
-    # Ensure LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET are in .env.local
-    uvicorn.run(app, host="0.0.0.0", port=8080) 
+# # --- Main Execution (for running with uvicorn) ---
+# if __name__ == "__main__":
+#     import uvicorn
+#     # Ensure LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET are in .env.local
+#     uvicorn.run(app, host="0.0.0.0", port=8080) 
