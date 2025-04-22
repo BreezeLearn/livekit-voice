@@ -21,7 +21,7 @@ from breezeflowLLm import LLM as BreezeflowLLM
 
 from livekit.plugins.deepgram import tts
 
-load_dotenv(dotenv_path=".env.local")
+load_dotenv()
 logger = logging.getLogger("voice-agent")
 
 
@@ -30,6 +30,16 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
+    # --- Get agent_id from job metadata --- 
+    agent_id = ctx.job.metadata
+    # if not agent_id:
+    #     logger.error(f"Job metadata (agent_id) is missing or empty. Cannot configure LLM. metadata: {ctx.job.metadata}")
+    #     # Decide how to handle this - maybe raise an error or use a default?
+    #     # For now, let's raise to make the problem visible.
+    #     raise ValueError("Agent ID not found in job metadata")
+    # logger.info(f"Received agent_id from job metadata: {agent_id}")
+    # --------------------------------------
+
     initial_ctx = llm.ChatContext().append(
         role="system",
         text=(
@@ -54,7 +64,7 @@ async def entrypoint(ctx: JobContext):
         vad=ctx.proc.userdata["vad"],
         stt=deepgram.STT(),
         llm=BreezeflowLLM(
-            chatbot_id="b59bfa1b-695b-4033-9b49-e715ca3fd7f9",
+            chatbot_id=ctx.room.name,
             # temperature=0.8,
         ),
         tts=tts.TTS(
@@ -86,9 +96,10 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
+    # No custom argument parsing or sys.argv manipulation needed anymore
     cli.run_app(
         WorkerOptions(
-            entrypoint_fnc=entrypoint,
+            entrypoint_fnc=entrypoint, # Pass the original entrypoint
             prewarm_fnc=prewarm,
         ),
     )
