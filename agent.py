@@ -39,6 +39,7 @@ async def entrypoint(ctx: JobContext):
     #     raise ValueError("Agent ID not found in job metadata")
     # logger.info(f"Received agent_id from job metadata: {agent_id}")
     # --------------------------------------
+    
 
     initial_ctx = llm.ChatContext().append(
         role="system",
@@ -60,11 +61,13 @@ async def entrypoint(ctx: JobContext):
     # Other great providers exist like Cerebras, ElevenLabs, Groq, Play.ht, Rime, and more
     # Learn more and pick the best one for your app:
     # https://docs.livekit.io/agents/plugins
+
+    logger.info(f"Starting voice agent for job 77 with agent_id {ctx.agent.name}")
     agent = VoicePipelineAgent(
         vad=ctx.proc.userdata["vad"],
         stt=deepgram.STT(),
         llm=BreezeflowLLM(
-            chatbot_id=ctx.room.name,
+            chatbot_id=participant.identity,
             # temperature=0.8,
         ),
         tts=tts.TTS(
