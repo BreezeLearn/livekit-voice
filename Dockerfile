@@ -1,6 +1,6 @@
 # This is an example Dockerfile that builds a minimal container for running LK Agents
 # syntax=docker/dockerfile:1
-ARG PYTHON_VERSION=3.11.6
+ARG PYTHON_VERSION=3.12.1
 FROM python:${PYTHON_VERSION}-slim
 
 # Prevents Python from writing pyc files.
@@ -41,7 +41,7 @@ COPY . .
 RUN python main.py download-files
 
 # expose healthcheck port
-EXPOSE 8000
+EXPOSE 8081
 
 # Run the application.
-CMD ["python", "main.py", "start"]
+CMD ["python", "main.py", "dev"]
