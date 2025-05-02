@@ -1,5 +1,5 @@
 import requests
-from openai import AzureOpenAI
+# from openai import AzureOpenAI
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 
@@ -9,11 +9,11 @@ load_dotenv()
 
 client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
 
-azure_client = AzureOpenAI(
-  api_key = os.getenv("AZURE_OPENAI_API_KEY"),  
-  api_version = "2024-10-21",
-  azure_endpoint =os.getenv("AZURE_OPENAI_ENDPOINT") 
-)
+# azure_client = AzureOpenAI(
+#   api_key = os.getenv("AZURE_OPENAI_API_KEY"),  
+#   api_version = "2024-10-21",
+#   azure_endpoint =os.getenv("AZURE_OPENAI_ENDPOINT") 
+# )
 systemPromptTemplate = """
 You are a decisive, proactive, and empathetic AI Customer Support Agent working for {company_name}. Your sole mission is to resolve customer issues quickly and effectively through direct interaction, clear communication, and smart screen navigation.
 
@@ -122,21 +122,21 @@ def getAgentDetails(agent_id):
 
 
 
-def getEmbedding(text):
-    response = azure_client.embeddings.create(
-        input = text,
-        model= "text-embedding-3-large"
-    )
-    return response
+# def getEmbedding(text):
+#     response = azure_client.embeddings.create(
+#         input = text,
+#         model= "text-embedding-3-large"
+#     )
+#     return response
 
 
-def queryQdrant(query, collection_name):
+# def queryQdrant(query, collection_name):
 
-    response = client.query(
-        collection_name=collection_name,
-        query_vector=getEmbedding(query),
-        limit=5,
-        with_payload=True,
-        with_vectors=True
-    )
-    return response
+#     response = client.query(
+#         collection_name=collection_name,
+#         query_vector=getEmbedding(query),
+#         limit=5,
+#         with_payload=True,
+#         with_vectors=True
+#     )
+#     return response
