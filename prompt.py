@@ -1,13 +1,13 @@
 import requests
 # from openai import AzureOpenAI
 from dotenv import load_dotenv
-from qdrant_client import QdrantClient
+# from qdrant_client import QdrantClient
 
 
-import os
+# import os
 load_dotenv()
 
-client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
+# client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
 
 # azure_client = AzureOpenAI(
 #   api_key = os.getenv("AZURE_OPENAI_API_KEY"),  
