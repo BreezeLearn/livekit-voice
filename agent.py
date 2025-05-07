@@ -139,12 +139,15 @@ async def entrypoint(ctx: JobContext):
     systemPrompt = getAgentDetails(participant.name)
 
     session = AgentSession(
-        stt=deepgram.STT(model="nova-3", language="multi"),
+        stt=openai.STT(
+            model="gpt-4o-transcribe",
+        ),
         llm=openai.LLM(model="gpt-4o"),
         tts=openai.TTS(
         model="gpt-4o-mini-tts",
-        voice="ash",
-        instructions="Speak in a friendly and conversational tone.",
+        voice="alloy",
+        instructions="""Affect: Deep, commanding, and slightly dramatic, with an archaic and reverent quality that reflects the grandeur of Olde English storytelling.\n\nTone: Noble, heroic, and formal, capturing the essence of medieval knights and epic quests, while reflecting the antiquated charm of Olde English.\n\nEmotion: Excitement, anticipation, and a sense of mystery, combined with the seriousness of fate and duty.\n\nPronunciation: Clear, deliberate, and with a slightly formal cadence. Specific words like \"hast,\" \"thou,\" and \"doth\" should be pronounced slowly and with emphasis to reflect Olde English speech patterns.\n\nPause: Pauses after important Olde English phrases such as \"Lo!\" or \"Hark!\" and between clauses like \"Choose thy path\" to add weight to the decision-making process and allow the listener to reflect on the seriousness of the quest."""
+,
     ),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
