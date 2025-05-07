@@ -21,8 +21,6 @@ from livekit.api import RoomParticipantIdentity
 from dotenv import load_dotenv
 from livekit.plugins import (
     openai,
-    cartesia,
-    deepgram,
     noise_cancellation,
     silero
 )
