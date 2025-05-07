@@ -1,19 +1,26 @@
 import requests
-# from openai import AzureOpenAI
+import logging
+from openai import AzureOpenAI
 from dotenv import load_dotenv
-# from qdrant_client import QdrantClient
+from qdrant_client import QdrantClient
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 
-# import os
+import os
 load_dotenv()
 
-# client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
+logger = logging.getLogger(__name__)
 
-# azure_client = AzureOpenAI(
-#   api_key = os.getenv("AZURE_OPENAI_API_KEY"),  
-#   api_version = "2024-10-21",
-#   azure_endpoint =os.getenv("AZURE_OPENAI_ENDPOINT") 
-# )
+QDRANT_URL = os.environ["QDRANT_URL"]
+QDRANT_API_KEY = os.environ["QDRANT_API_KEY"]
+
+client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+
+azure_client = AzureOpenAI(
+    api_key = os.environ["AZURE_OPENAI_API_KEY"],  
+    api_version = "2024-10-21",
+    azure_endpoint = os.environ["AZURE_OPENAI_ENDPOINT"] 
+)
 systemPromptTemplate = """
 You are a decisive, proactive, and empathetic AI Customer Support Agent working for {company_name}. Your sole mission is to resolve customer issues quickly and effectively through direct interaction, clear communication, and smart screen navigation.
 
@@ -136,22 +143,44 @@ def getAgentDetails(agent_id):
 # print(getAgentDetails(agent_id))
 
 
+def getCollectionName(agent_id):
+    url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
+    headers = {"Authorization": "Bearer yto1ad8ckbk87xjunxrq7mqdpbv4id"}
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
 
-# def getEmbedding(text):
-#     response = azure_client.embeddings.create(
-#         input = text,
-#         model= "text-embedding-3-large"
-#     )
-#     return response
+        if "data" in data and "KnowledgeBase" in data["data"]:
+            agent_data = data["data"]
+            knowledge_base = data["data"]["KnowledgeBase"]
+            if knowledge_base and len(knowledge_base) > 0:
+                return knowledge_base[0].get("collectionName"), agent_data.get("company")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to retrieve collection name: {str(e)}")
+        return None
 
 
-# def queryQdrant(query, collection_name):
+def getEmbedding(text):
+    response = azure_client.embeddings.create(
+        input = text,
+        model= "text-embedding-3-large"
+    )
+    # Extract the embedding vector from the response
+    return response.data[0].embedding
 
-#     response = client.query(
-#         collection_name=collection_name,
-#         query_vector=getEmbedding(query),
-#         limit=5,
-#         with_payload=True,
-#         with_vectors=True
-#     )
-#     return response
+
+def queryQdrant(query, collection_name, companyId):
+    logger.info(f"Querying Qdrant with collection name: {collection_name}")
+    query_embedding = getEmbedding(query)
+    response = client.query_points(
+        collection_name=collection_name,
+        query=query_embedding,
+        limit=5,
+        with_payload=True,
+        query_filter=Filter(
+        must=[FieldCondition(key="companyId", match=MatchValue(value=companyId))]
+    ),
+    )
+    return response
