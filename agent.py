@@ -1,108 +1,171 @@
 import logging
-
-from dotenv import load_dotenv
+import asyncio
+import json
+from livekit import rtc, api
 from livekit.agents import (
-    AutoSubscribe,
+    Agent,
+    AgentSession,
+    RoomInputOptions,
+    RoomOutputOptions,
+    get_job_context,
     JobContext,
-    JobProcess,
     WorkerOptions,
     cli,
-    llm,
-    metrics,
+    function_tool,
+    ToolError,
+    RunContext
 )
-from livekit.agents.pipeline import VoicePipelineAgent
+from livekit.agents.llm import ImageContent, ChatContext, ChatMessage
+from livekit.api import RoomParticipantIdentity
+
+from dotenv import load_dotenv
 from livekit.plugins import (
+    openai,
+    cartesia,
     deepgram,
     noise_cancellation,
-    silero,
-    turn_detector
+    silero
 )
-from breezeflowLLm import LLM as BreezeflowLLM
-
-from livekit.plugins.deepgram import tts
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from prompt import getAgentDetails
 
 load_dotenv()
 logger = logging.getLogger("voice-agent")
 
 
-def prewarm(proc: JobProcess):
-    proc.userdata["vad"] = silero.VAD.load()
+class Assistant(Agent):
+    def __init__(self, instructions=str) -> None:
+        self._latest_frame = None
+        self._video_stream = None
+        self._tasks = []
+        super().__init__(instructions=instructions)
+    
+    @function_tool()
+    async def lookup_user(
+        context: RunContext,
+        user_id: str,
+    ) -> dict:
+        """Look up a user's information by ID."""
+        return {"name": "John Doe", "email": "john.doe@example.com"}
+
+
+    @function_tool()
+    async def label_page_elements(
+        context: RunContext,
+        label: str,
+        action: str,
+    ):
+        """Label page elements using Javascript.
+        action: "label" or "click" or "scroll"
+        if action is "scroll", label is the scroll direction (up or down) 
+        if action is "label", label is 0
+        if action is "click", label is the numerical label of the page elements to be clicked
+
+        This function assigns numerical labels page elements.
+        Returns:
+            A dictionary with the labels of the page elements
+        """
+        try:
+            room = get_job_context().room
+            participant_identity = next(iter(room.remote_participants))
+            logger.info(f"Participant identity: {participant_identity}")
+            response = await room.local_participant.perform_rpc(
+                destination_identity=participant_identity,
+                method="labelPageElements",
+                payload=json.dumps({
+                    "labeled": True,
+                    "label": label,
+                    "action": action,
+                }),
+            )
+            print("tool call result" + response)
+            return response
+        except Exception:
+            raise ToolError("Unable to label page elements. Please try again later.")
+    
+    async def on_enter(self):
+        room = get_job_context().room
+
+        # Find the first video track (if any) from the remote participant
+        remote_participant = list(room.remote_participants.values())[0]
+        video_tracks = [publication.track for publication in list(remote_participant.track_publications.values()) if publication.track.kind == rtc.TrackKind.KIND_VIDEO]
+        if video_tracks:
+            self._create_video_stream(video_tracks[0])
+        
+        # Watch for new video tracks not yet published
+        @room.on("track_subscribed")
+        def on_track_subscribed(track: rtc.Track, publication: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant):
+            if track.kind == rtc.TrackKind.KIND_VIDEO:
+                self._create_video_stream(track)
+                        
+    async def on_user_turn_completed(self, turn_ctx: ChatContext, new_message: ChatMessage) -> None:
+        # Add the latest video frame, if any, to the new message
+        if self._latest_frame:
+            new_message.content.append(ImageContent(image=self._latest_frame))
+            self._latest_frame = None
+    
+    # Helper method to buffer the latest video frame from the user's track
+    def _create_video_stream(self, track: rtc.Track):
+        # Close any existing stream (we only want one at a time)
+        if self._video_stream is not None:
+            self._video_stream.close()
+
+        # Create a new stream to receive frames    
+        self._video_stream = rtc.VideoStream(track)
+        async def read_stream():
+            async for event in self._video_stream:
+                # Store the latest frame for use later
+                self._latest_frame = event.frame
+        
+        # Store the async task
+        task = asyncio.create_task(read_stream())
+        task.add_done_callback(lambda t: self._tasks.remove(t))
+        self._tasks.append(task)
 
 
 async def entrypoint(ctx: JobContext):
-    # --- Get agent_id from job metadata --- 
-    agent_id = ctx.job.metadata
-    # if not agent_id:
-    #     logger.error(f"Job metadata (agent_id) is missing or empty. Cannot configure LLM. metadata: {ctx.job.metadata}")
-    #     # Decide how to handle this - maybe raise an error or use a default?
-    #     # For now, let's raise to make the problem visible.
-    #     raise ValueError("Agent ID not found in job metadata")
-    # logger.info(f"Received agent_id from job metadata: {agent_id}")
-    # --------------------------------------
-    
+    await ctx.connect()
 
-    initial_ctx = llm.ChatContext().append(
-        role="system",
-        text=(
-            "You are a voice assistant created by LiveKit. Your interface with users will be voice. "
-            "You should use short and concise responses, and avoiding usage of unpronouncable punctuation. "
-            "You were created as a demo to showcase the capabilities of LiveKit's agents framework."
-        ),
-    )
-
-    logger.info(f"connecting to room {ctx.room.name}")
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-
-    # Wait for the first participant to connect
     participant = await ctx.wait_for_participant()
     logger.info(f"starting voice assistant for participant {participant.identity}")
 
-    # This project is configured to use Deepgram STT, OpenAI LLM and Cartesia TTS plugins
-    # Other great providers exist like Cerebras, ElevenLabs, Groq, Play.ht, Rime, and more
-    # Learn more and pick the best one for your app:
-    # https://docs.livekit.io/agents/plugins
+    async with api.LiveKitAPI() as lkapi:
+        res = await lkapi.room.get_participant(RoomParticipantIdentity(
+        room=ctx.job.room.name,
+        identity=participant.identity,
+        ))
+        logger.info(f"Participant info: {res.identity}, {res.name}, {res.metadata}")
 
-    logger.info(f"Starting voice agent for job 77 with agent_id {ctx.agent.name}")
-    agent = VoicePipelineAgent(
-        vad=ctx.proc.userdata["vad"],
-        stt=deepgram.STT(),
-        llm=BreezeflowLLM(
-            chatbot_id=participant.identity,
-            # temperature=0.8,
-        ),
-        tts=tts.TTS(
-            model="aura-asteria-en",
-        ),
-        # use LiveKit's transformer-based turn detector
-        turn_detector=turn_detector.EOUModel(),
-        # minimum delay for endpointing, used when turn detector believes the user is done with their turn
-        min_endpointing_delay=0.5,
-        # maximum delay for endpointing, used when turn detector does not believe the user is done with their turn
-        max_endpointing_delay=5.0,
-        # enable background voice & noise cancellation, powered by Krisp
-        # included at no additional cost with LiveKit Cloud
-        noise_cancellation=noise_cancellation.BVC(),
-        chat_ctx=initial_ctx,
+    systemPrompt = getAgentDetails(participant.name)
+
+    session = AgentSession(
+        stt=deepgram.STT(model="nova-3", language="multi"),
+        llm=openai.LLM(model="gpt-4o"),
+        tts=openai.TTS(
+        model="gpt-4o-mini-tts",
+        voice="ash",
+        instructions="Speak in a friendly and conversational tone.",
+    ),
+        vad=silero.VAD.load(),
+        turn_detection=MultilingualModel(),
     )
 
-    usage_collector = metrics.UsageCollector()
+    await session.start(
+        room=ctx.room,
+        agent=Assistant(instructions=systemPrompt),
+        room_input_options=RoomInputOptions(
+            noise_cancellation=noise_cancellation.BVC(),
+            video_enabled=True,
+            text_enabled=True,
+            audio_enabled=True,
+        ),
+        room_output_options=RoomOutputOptions(transcription_enabled=True),
+    )
 
-    @agent.on("metrics_collected")
-    def on_metrics_collected(agent_metrics: metrics.AgentMetrics):
-        metrics.log_metrics(agent_metrics)
-        usage_collector.collect(agent_metrics)
-
-    agent.start(ctx.room, participant)
-
-    # The agent should be polite and greet the user when it joins :)
-    await agent.say("Hey, how can I help you today?", allow_interruptions=True)
+    await session.generate_reply(
+        instructions="Greet the user and enlighten them about yourself and the company.",
+    )
 
 
 if __name__ == "__main__":
-    # No custom argument parsing or sys.argv manipulation needed anymore
-    cli.run_app(
-        WorkerOptions(
-            entrypoint_fnc=entrypoint, # Pass the original entrypoint
-            prewarm_fnc=prewarm,
-        ),
-    )
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
