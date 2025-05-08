@@ -77,7 +77,6 @@ class Assistant(Agent):
 
             return {'results': results}
 
-
     # @function_tool()
     # async def label_page_elements(
     #     context: RunContext,
