@@ -4,24 +4,42 @@ from openai import AzureOpenAI
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
-
-
 import os
+from functools import lru_cache
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Use get() with defaults for environment variables
-QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
-QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
+def get_required_env(key: str) -> str:
+    value = os.environ.get(key)
+    if not value:
+        raise EnvironmentError(f"Missing required environment variable: {key}")
+    return value
 
-client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+def get_optional_env(key: str, default: str = "") -> str:
+    return os.environ.get(key, default)
 
-azure_client = AzureOpenAI(
-    api_key = os.environ.get("AZURE_OPENAI_API_KEY", ""),  
-    api_version = "2024-10-21",
-    azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
-)
+@lru_cache()
+def get_qdrant_client():
+    url = os.environ.get("QDRANT_URL")
+    api_key = os.environ.get("QDRANT_API_KEY")
+    if not url or not api_key:
+        raise EnvironmentError("Missing QDRANT_URL or QDRANT_API_KEY environment variables")
+    return QdrantClient(url=url, api_key=api_key)
+
+@lru_cache()
+def get_azure_client():
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+    endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+    if not api_key or not endpoint:
+        raise EnvironmentError("Missing AZURE_OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT environment variables")
+    return AzureOpenAI(
+        api_key=api_key,
+        api_version="2024-10-21",
+        azure_endpoint=endpoint
+    )
+
 systemPromptTemplate = """# Elite Customer Support Agent Prompt
 
 You are a decisive, proactive, and empathetic AI Customer Support Agent working for {company_name}. Your mission is to resolve customer issues quickly and effectively through direct interaction, clear communication, and exceptional guidance.
@@ -84,8 +102,6 @@ Instead of performing actions for customers, provide them with clear, step-by-st
 - Identify patterns in customer challenges to provide feedback on website usability or process improvements.
 """
 
-
-
 def getAgentDetails(agent_id):
     url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
     headers = {"Authorization": "Bearer yto1ad8ckbk87xjunxrq7mqdpbv4id"}
@@ -130,16 +146,16 @@ def getCollectionName(agent_id):
 
 
 def getEmbedding(text):
-    response = azure_client.embeddings.create(
-        input = text,
-        model= "text-embedding-3-large"
+    client = get_azure_client()
+    response = client.embeddings.create(
+        input=text,
+        model="text-embedding-3-large"
     )
-    # Extract the embedding vector from the response
     return response.data[0].embedding
 
 
 def queryQdrant(query, collection_name, companyId):
-    logger.info(f"Querying Qdrant with collection name: {collection_name}")
+    client = get_qdrant_client()
     query_embedding = getEmbedding(query)
     response = client.query_points(
         collection_name=collection_name,
@@ -147,7 +163,7 @@ def queryQdrant(query, collection_name, companyId):
         limit=5,
         with_payload=True,
         query_filter=Filter(
-        must=[FieldCondition(key="companyId", match=MatchValue(value=companyId))]
-    ),
+            must=[FieldCondition(key="companyId", match=MatchValue(value=companyId))]
+        ),
     )
     return response

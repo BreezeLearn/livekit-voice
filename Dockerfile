@@ -7,13 +7,12 @@ FROM python:${PYTHON_VERSION}-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Create a non-privileged user that the app will run under.
-ARG UID=10001
 RUN adduser \
     --disabled-password \
     --gecos "" \
     --home "/home/appuser" \
     --shell "/sbin/nologin" \
-    --uid "${UID}" \
+    --uid "10001" \
     appuser
 
 # Install gcc and other build dependencies.
@@ -23,14 +22,8 @@ RUN apt-get update && \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up the application directory and environment file
+# Set up the application directory
 WORKDIR /home/appuser
-
-# Create .env file with default values - do this as root
-RUN echo "QDRANT_URL=${QDRANT_URL:-http://localhost:6333}\n\
-QDRANT_API_KEY=${QDRANT_API_KEY:-}\n\
-AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}\n\
-AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}" > .env
 
 RUN mkdir -p /home/appuser/.cache && \
     chown -R appuser:appuser /home/appuser
