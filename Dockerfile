@@ -17,7 +17,6 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
-
 # Install gcc and other build dependencies.
 RUN apt-get update && \
     apt-get install -y \
@@ -32,10 +31,18 @@ WORKDIR /home/appuser
 RUN mkdir -p /home/appuser/.cache
 RUN chown -R appuser /home/appuser/.cache
 
+# Copy requirements first for better caching
 COPY requirements.txt .
 RUN python -m pip install --user --no-cache-dir -r requirements.txt
 
+# Copy the rest of the application
 COPY . .
+
+# Create .env file with default values
+RUN echo "QDRANT_URL=${QDRANT_URL:-http://localhost:6333}\n\
+QDRANT_API_KEY=${QDRANT_API_KEY:-}\n\
+AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}\n\
+AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}" > .env
 
 # ensure that any dependent models are downloaded at build-time
 RUN python agent.py download-files

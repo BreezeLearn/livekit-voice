@@ -11,15 +11,16 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-QDRANT_URL = os.environ["QDRANT_URL"]
-QDRANT_API_KEY = os.environ["QDRANT_API_KEY"]
+# Use get() with defaults for environment variables
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
 
 client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
 azure_client = AzureOpenAI(
-    api_key = os.environ["AZURE_OPENAI_API_KEY"],  
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY", ""),  
     api_version = "2024-10-21",
-    azure_endpoint = os.environ["AZURE_OPENAI_ENDPOINT"] 
+    azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
 )
 systemPromptTemplate = """# Elite Customer Support Agent Prompt
 
