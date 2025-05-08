@@ -78,38 +78,38 @@ class Assistant(Agent):
             return {'results': results}
 
 
-    @function_tool()
-    async def label_page_elements(
-        context: RunContext,
-        label: str,
-        action: str,
-    ):
-        """Label page elements using Javascript.
-        action: "label" or "click" or "scroll"
-        if action is "scroll", label is the scroll direction (up or down) 
-        if action is "label", label is 0
-        if action is "click", label is the numerical label of the page elements to be clicked
+    # @function_tool()
+    # async def label_page_elements(
+    #     context: RunContext,
+    #     label: str,
+    #     action: str,
+    # ):
+    #     """Label page elements using Javascript.
+    #     action: "label" or "click" or "scroll"
+    #     if action is "scroll", label is the scroll direction (up or down) 
+    #     if action is "label", label is 0
+    #     if action is "click", label is the numerical label of the page elements to be clicked
 
-        This function assigns numerical labels page elements.
-        Returns:
-            A dictionary with the labels of the page elements
-        """
-        try:
-            room = get_job_context().room
-            participant_identity = next(iter(room.remote_participants))
-            logger.info(f"Participant identity: {participant_identity}")
-            response = await room.local_participant.perform_rpc(
-                destination_identity=participant_identity,
-                method="labelPageElements",
-                payload=json.dumps({
-                    "labeled": True,
-                    "label": label,
-                    "action": action,
-                }),
-            )
-            return response
-        except Exception:
-            raise ToolError("Unable to label page elements. Please try again later.")
+    #     This function assigns numerical labels page elements.
+    #     Returns:
+    #         A dictionary with the labels of the page elements
+    #     """
+    #     try:
+    #         room = get_job_context().room
+    #         participant_identity = next(iter(room.remote_participants))
+    #         logger.info(f"Participant identity: {participant_identity}")
+    #         response = await room.local_participant.perform_rpc(
+    #             destination_identity=participant_identity,
+    #             method="labelPageElements",
+    #             payload=json.dumps({
+    #                 "labeled": True,
+    #                 "label": label,
+    #                 "action": action,
+    #             }),
+    #         )
+    #         return response
+    #     except Exception:
+    #         raise ToolError("Unable to label page elements. Please try again later.")
     
     async def on_enter(self):
         room = get_job_context().room
@@ -174,7 +174,15 @@ async def entrypoint(ctx: JobContext):
         tts=openai.TTS(
         model="gpt-4o-mini-tts",
         voice="alloy",
-        instructions="""Affect: Deep, commanding, and slightly dramatic, with an archaic and reverent quality that reflects the grandeur of Olde English storytelling.\n\nTone: Noble, heroic, and formal, capturing the essence of medieval knights and epic quests, while reflecting the antiquated charm of Olde English.\n\nEmotion: Excitement, anticipation, and a sense of mystery, combined with the seriousness of fate and duty.\n\nPronunciation: Clear, deliberate, and with a slightly formal cadence. Specific words like \"hast,\" \"thou,\" and \"doth\" should be pronounced slowly and with emphasis to reflect Olde English speech patterns.\n\nPause: Pauses after important Olde English phrases such as \"Lo!\" or \"Hark!\" and between clauses like \"Choose thy path\" to add weight to the decision-making process and allow the listener to reflect on the seriousness of the quest."""
+        instructions="""Affect/personality: A cheerful guide 
+
+Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable.
+
+Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
+
+Pause: Brief, purposeful pauses after key instructions (e.g., "cross the street" and "turn right") to allow time for the listener to process the information and follow along.
+
+Emotion: Warm and supportive, conveying empathy and care, ensuring the listener feels guided and safe throughout the journey."""
 ,
     ),
         vad=silero.VAD.load(),

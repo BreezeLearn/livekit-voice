@@ -18,7 +18,7 @@ from livekit.plugins import (
     google,
 )
 from openai.types.beta.realtime.session import TurnDetection
-from prompt import getAgentDetails
+from prompt import getAgentDetails, queryQdrant, getCollectionName
 import logging
 from livekit import api
 from livekit.api import RoomParticipantIdentity
@@ -33,79 +33,80 @@ class Assistant(Agent):
     def __init__(self, instructions=str) -> None:
         super().__init__(instructions=instructions)
     
+
     @function_tool()
-    async def lookup_user(
+    async def lookup_knowledgebase(
         context: RunContext,
-        user_id: str,
+        query: str,
     ) -> dict:
-        """Look up a user's information by ID."""
-        return {"name": "John Doe", "email": "john.doe@example.com"}
-    
+        """Look information in the knowledge base of the company you're representing. Use this to answer users questions you're not sure about."""
 
-    @function_tool()
-    async def label_page_elements(
-        context: RunContext,
-        label: str,
-        action: str,
-    ):
-        """Label page elements using Javascript.
-        action: "label" or "click" or "scroll"
-        if action is "scroll", label is the scroll direction (up or down) 
-        if action is "label", label is 0
-        if action is "click", label is the numerical label of the page elements to be clicked
+        room = get_job_context().room
+        participant_identity = next(iter(room.remote_participants))
+        async with api.LiveKitAPI() as lkapi:
+            res = await lkapi.room.get_participant(RoomParticipantIdentity(
+                room=room.name,
+                identity=participant_identity,
+            ))
 
-        This function assigns numerical labels page elements.
-        Returns:
-            A dictionary with the labels of the page elements
-        """
-        try:
-            room = get_job_context().room
-            participant_identity = next(iter(room.remote_participants))
-            logger.info(f"Participant identity: {participant_identity}")
-            response = await room.local_participant.perform_rpc(
-                destination_identity=participant_identity,
-                method="labelPageElements",
-                payload=json.dumps({
-                    "labeled": True,
-                    "label": label,
-                    "action": action,
-                }),
-                # response_timeout=10.0 if high_accuracy else 5.0,
-            )
-            return response
-        except Exception:
-            raise ToolError("Unable to label page elements. Please try again later.")
-        
+            collection_name, companyId = getCollectionName(res.name)
+
+            if not collection_name:
+                raise ToolError("Knowledge base not found. Please try again later.")
+            response = queryQdrant(query, collection_name, companyId)
+            if not response or not response.points:
+                raise ToolError("No results found in the knowledge base.")
+
+            # Process and format the response
+            results = []
+            for point in response.points:
+                if hasattr(point, 'payload') and point.payload and 'content' in point.payload:
+                    results.append({
+                        'content': point.payload['content'],
+                        'score': point.score
+                    })
+            
+            if not results:
+                raise ToolError("No content found in the knowledge base.")
+
+            return {'results': results}
+
+
     # @function_tool()
-    # async def click_page_elements(
+    # async def label_page_elements(
     #     context: RunContext,
-    #     label: int,
+    #     label: str,
+    #     action: str,
     # ):
-    #     """Click page elements using Javascript.
-        
-    #     This function sends a request to the remote participant to click page elements with a specific label (number).
+    #     """Label page elements using Javascript.
+    #     action: "label" or "click" or "scroll"
+    #     if action is "scroll", label is the scroll direction (up or down) 
+    #     if action is "label", label is 0
+    #     if action is "click", label is the numerical label of the page elements to be clicked
+
+    #     This function assigns numerical labels page elements.
     #     Returns:
     #         A dictionary with the labels of the page elements
     #     """
     #     try:
     #         room = get_job_context().room
     #         participant_identity = next(iter(room.remote_participants))
-    #         logger.info(f"Participant identity: {participant_identity}, Label: {label}")
+    #         logger.info(f"Participant identity: {participant_identity}")
     #         response = await room.local_participant.perform_rpc(
     #             destination_identity=participant_identity,
-    #             method="clickPageElements",
+    #             method="labelPageElements",
     #             payload=json.dumps({
-    #                 "clicked": True,
-    #                 "label": label
-    #             })
-    #             # response_timeout=10.0 if label else 5.0,
+    #                 "labeled": True,
+    #                 "label": label,
+    #                 "action": action,
+    #             }),
+    #             # response_timeout=10.0 if high_accuracy else 5.0,
     #         )
-    #         logger.info(f"Response: {response}")
     #         return response
     #     except Exception:
-    #         raise ToolError("Unable to click page elements. Please try again later.")
-
-
+    #         raise ToolError("Unable to label page elements. Please try again later.")
+        
+  
 async def entrypoint(ctx: agents.JobContext):
     await ctx.connect()
 
@@ -137,7 +138,7 @@ async def entrypoint(ctx: agents.JobContext):
 
     # session = AgentSession(
     #     llm=openai.realtime.RealtimeModel(
-    #         voice="coral",
+    #         voice="alloy",
     #         turn_detection=TurnDetection(
     #             type="semantic_vad",
     #             eagerness="auto",
