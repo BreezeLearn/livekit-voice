@@ -21,13 +21,11 @@ from livekit.api import RoomParticipantIdentity
 from dotenv import load_dotenv
 from livekit.plugins import (
     openai,
-    cartesia,
-    deepgram,
     noise_cancellation,
     silero
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from prompt import getAgentDetails
+from prompt import getAgentDetails, queryQdrant, getCollectionName
 
 load_dotenv()
 logger = logging.getLogger("voice-agent")
@@ -39,14 +37,45 @@ class Assistant(Agent):
         self._video_stream = None
         self._tasks = []
         super().__init__(instructions=instructions)
+
+
     
     @function_tool()
-    async def lookup_user(
+    async def lookup_knowledgebase(
         context: RunContext,
-        user_id: str,
+        query: str,
     ) -> dict:
-        """Look up a user's information by ID."""
-        return {"name": "John Doe", "email": "john.doe@example.com"}
+        """Look information in the knowledge base of the company you're representing. Use this to answer users questions you're not sure about."""
+
+        room = get_job_context().room
+        participant_identity = next(iter(room.remote_participants))
+        async with api.LiveKitAPI() as lkapi:
+            res = await lkapi.room.get_participant(RoomParticipantIdentity(
+                room=room.name,
+                identity=participant_identity,
+            ))
+
+            collection_name, companyId = getCollectionName(res.name)
+
+            if not collection_name:
+                raise ToolError("Knowledge base not found. Please try again later.")
+            response = queryQdrant(query, collection_name, companyId)
+            if not response or not response.points:
+                raise ToolError("No results found in the knowledge base.")
+
+            # Process and format the response
+            results = []
+            for point in response.points:
+                if hasattr(point, 'payload') and point.payload and 'content' in point.payload:
+                    results.append({
+                        'content': point.payload['content'],
+                        'score': point.score
+                    })
+            
+            if not results:
+                raise ToolError("No content found in the knowledge base.")
+
+            return {'results': results}
 
 
     @function_tool()
@@ -78,7 +107,6 @@ class Assistant(Agent):
                     "action": action,
                 }),
             )
-            print("tool call result" + response)
             return response
         except Exception:
             raise ToolError("Unable to label page elements. Please try again later.")
