@@ -1,45 +1,39 @@
-import logging
-import asyncio
+from dotenv import load_dotenv
+
+from livekit import agents
 import json
-from livekit import rtc, api
+from livekit.agents import ToolError
 from livekit.agents import (
-    Agent,
     AgentSession,
+    function_tool,
+    Agent,
+    RunContext,
     RoomInputOptions,
     RoomOutputOptions,
-    get_job_context,
-    JobContext,
-    WorkerOptions,
-    cli,
-    function_tool,
-    ToolError,
-    RunContext
+    get_job_context
 )
-from livekit.agents.llm import ImageContent, ChatContext, ChatMessage
-from livekit.api import RoomParticipantIdentity
-
-from dotenv import load_dotenv
 from livekit.plugins import (
     openai,
     noise_cancellation,
-    silero
+    google,
 )
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from openai.types.beta.realtime.session import TurnDetection
 from prompt import getAgentDetails, queryQdrant, getCollectionName
+import logging
+from livekit import api
+from livekit.api import RoomParticipantIdentity
+
 
 load_dotenv()
-logger = logging.getLogger("voice-agent")
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Assistant(Agent):
     def __init__(self, instructions=str) -> None:
-        self._latest_frame = None
-        self._video_stream = None
-        self._tasks = []
         super().__init__(instructions=instructions)
-
-
     
+
     @function_tool()
     async def lookup_knowledgebase(
         context: RunContext,
@@ -77,6 +71,7 @@ class Assistant(Agent):
 
             return {'results': results}
 
+
     # @function_tool()
     # async def label_page_elements(
     #     context: RunContext,
@@ -105,56 +100,21 @@ class Assistant(Agent):
     #                 "label": label,
     #                 "action": action,
     #             }),
+    #             # response_timeout=10.0 if high_accuracy else 5.0,
     #         )
     #         return response
     #     except Exception:
     #         raise ToolError("Unable to label page elements. Please try again later.")
-    
-    async def on_enter(self):
-        room = get_job_context().room
-
-        # Find the first video track (if any) from the remote participant
-        remote_participant = list(room.remote_participants.values())[0]
-        video_tracks = [publication.track for publication in list(remote_participant.track_publications.values()) if publication.track.kind == rtc.TrackKind.KIND_VIDEO]
-        if video_tracks:
-            self._create_video_stream(video_tracks[0])
         
-        # Watch for new video tracks not yet published
-        @room.on("track_subscribed")
-        def on_track_subscribed(track: rtc.Track, publication: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant):
-            if track.kind == rtc.TrackKind.KIND_VIDEO:
-                self._create_video_stream(track)
-                        
-    async def on_user_turn_completed(self, turn_ctx: ChatContext, new_message: ChatMessage) -> None:
-        # Add the latest video frame, if any, to the new message
-        if self._latest_frame:
-            new_message.content.append(ImageContent(image=self._latest_frame))
-            self._latest_frame = None
-    
-    # Helper method to buffer the latest video frame from the user's track
-    def _create_video_stream(self, track: rtc.Track):
-        # Close any existing stream (we only want one at a time)
-        if self._video_stream is not None:
-            self._video_stream.close()
-
-        # Create a new stream to receive frames    
-        self._video_stream = rtc.VideoStream(track)
-        async def read_stream():
-            async for event in self._video_stream:
-                # Store the latest frame for use later
-                self._latest_frame = event.frame
-        
-        # Store the async task
-        task = asyncio.create_task(read_stream())
-        task.add_done_callback(lambda t: self._tasks.remove(t))
-        self._tasks.append(task)
-
-
-async def entrypoint(ctx: JobContext):
+  
+async def entrypoint(ctx: agents.JobContext):
     await ctx.connect()
 
+    
+    # agent_id = ctx.job
+    # logger.info(f"Agent ID: {agent_id}")
     participant = await ctx.wait_for_participant()
-    logger.info(f"starting voice assistant for participant {participant.identity}")
+    logger.info(f"Starting voice assistant for participant {participant}")
 
     async with api.LiveKitAPI() as lkapi:
         res = await lkapi.room.get_participant(RoomParticipantIdentity(
@@ -164,29 +124,29 @@ async def entrypoint(ctx: JobContext):
         logger.info(f"Participant info: {res.identity}, {res.name}, {res.metadata}")
 
     systemPrompt = getAgentDetails(participant.name)
+    # logger.info(f"System prompt: {systemPrompt}")
+    # Initialize the agent session with the Google Gemini model
 
     session = AgentSession(
-        stt=openai.STT(
-            model="gpt-4o-transcribe",
+        llm=google.beta.realtime.RealtimeModel(
+            model="gemini-2.0-flash-exp",
+            voice="Puck",
+            temperature=0.6,
+            instructions=systemPrompt,
         ),
-        llm=openai.LLM(model="gpt-4o"),
-        tts=openai.TTS(
-        model="gpt-4o-mini-tts",
-        voice="alloy",
-        instructions="""Affect/personality: A cheerful guide 
-
-Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable.
-
-Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
-
-Pause: Brief, purposeful pauses after key instructions (e.g., "cross the street" and "turn right") to allow time for the listener to process the information and follow along.
-
-Emotion: Warm and supportive, conveying empathy and care, ensuring the listener feels guided and safe throughout the journey."""
-,
-    ),
-        vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
     )
+
+    # session = AgentSession(
+    #     llm=openai.realtime.RealtimeModel(
+    #         voice="alloy",
+    #         turn_detection=TurnDetection(
+    #             type="semantic_vad",
+    #             eagerness="auto",
+    #             create_response=True,
+    #             interrupt_response=True,
+    #         ),
+    #     )
+    # )
 
     await session.start(
         room=ctx.room,
@@ -206,4 +166,4 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
 
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
