@@ -7,13 +7,16 @@ FROM python:${PYTHON_VERSION}-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Create a non-privileged user that the app will run under.
+# See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
+ARG UID=10001
 RUN adduser \
     --disabled-password \
     --gecos "" \
     --home "/home/appuser" \
     --shell "/sbin/nologin" \
-    --uid "10001" \
+    --uid "${UID}" \
     appuser
+
 
 # Install gcc and other build dependencies.
 RUN apt-get update && \
@@ -22,20 +25,16 @@ RUN apt-get update && \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up the application directory
+# Switch to non-root user BEFORE copying files
+USER appuser
 WORKDIR /home/appuser
 
-RUN mkdir -p /home/appuser/.cache && \
-    chown -R appuser:appuser /home/appuser
+RUN mkdir -p /home/appuser/.cache
+RUN chown -R appuser /home/appuser/.cache
 
-# Switch to non-root user
-USER appuser
-
-# Copy requirements first for better caching
 COPY requirements.txt .
 RUN python -m pip install --user --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
 COPY . .
 
 # ensure that any dependent models are downloaded at build-time
