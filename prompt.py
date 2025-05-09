@@ -111,8 +111,13 @@ def getAgentDetails(agent_id):
 
 
 def getCollectionName(agent_id):
-    url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
-    headers = {"Authorization": "Bearer yto1ad8ckbk87xjunxrq7mqdpbv4id"}
+    is_staging = os.getenv("IS_STAGING", "false")
+    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
+
+    # Check if the environment is staging
+    if is_staging.lower() == "true":
+        url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
+    headers = {"Authorization": "Bearer " + os.getenv("BREEZE_API_KEY", "yto1ad8ckbk87xjunxrq7mqdpbv4id")}
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
