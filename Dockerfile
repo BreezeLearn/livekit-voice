@@ -44,4 +44,4 @@ RUN python agent.py download-files
 EXPOSE 8081
 
 # Run the application.
-CMD ["python", "agent.py", "start"]
+CMD ["python", "agent.py", "dev"]
