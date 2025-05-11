@@ -175,7 +175,7 @@ async def entrypoint(ctx: JobContext):
         voice="alloy",
         instructions="""Affect/personality: A cheerful guide 
 
-Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable.
+Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable and be more energetic , enthusiatic.
 
 Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
 
@@ -190,7 +190,7 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
 
     await session.start(
         room=ctx.room,
-        agent=Assistant(instructions=systemPrompt),
+        agent=Assistant(insgitructions=systemPrompt),
         room_input_options=RoomInputOptions(
             noise_cancellation=noise_cancellation.BVC(),
             video_enabled=True,
