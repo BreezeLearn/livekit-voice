@@ -201,7 +201,7 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
     )
 
     await session.generate_reply(
-        instructions="Greet the user and enlighten them about yourself and the company.",
+        instructions="Greet the user and enlighten them about yourself and what you do.",
     )
 
 
