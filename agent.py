@@ -188,6 +188,7 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
         turn_detection=MultilingualModel(),
     )
 
+    # logger.info(f"instructions: {systemPrompt}")
     await session.start(
         room=ctx.room,
         agent=Assistant(instructions=systemPrompt),
@@ -201,7 +202,8 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
     )
 
     await session.generate_reply(
-        instructions="Greet the user and enlighten them about yourself and the company. tell them every possible thing they need to know about the company just like a sales agent would do. the goal is to make the user feel comfortable and confident about the company and its services after the pitch.",
+        instructions="Greet the user and enlighten them about yourself and the company. ",
+        # tell them every possible thing they need to know about the company just like a sales agent would do. the goal is to make the user feel comfortable and confident about the company and its services after the pitch.
     )
 
 

@@ -87,8 +87,13 @@ Instead of performing actions for customers, provide them with clear, step-by-st
 
 
 def getAgentDetails(agent_id):
-    url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
-    headers = {"Authorization": "Bearer yto1ad8ckbk87xjunxrq7mqdpbv4id"}
+    is_staging = os.getenv("IS_STAGING", "false")
+    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
+
+    # Check if the environment is staging
+    if is_staging.lower() == "true":
+        url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
+    headers = {"Authorization": "Bearer " + os.getenv("BREEZE_API_KEY", "yto1ad8ckbk87xjunxrq7mqdpbv4id")}
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
@@ -98,7 +103,7 @@ def getAgentDetails(agent_id):
             agent_data = data["data"]
             # company_info = f"{agent_data.get('description', 'No description provided')} — Your name: {agent_data.get('name', 'Unknown')}, Tone: {agent_data.get('tone', 'Not specified')}"
             company_info = f"{agent_data.get('description', 'No description provided')} — Your name: {agent_data.get('name', 'Unknown')}, Tone: {agent_data.get('tone', 'Not specified')}"
-            system_prompt = systemPromptTemplate.format(company_info=company_info, company_name="Bloom & Grow")
+            system_prompt = systemPromptTemplate.format(company_info=company_info, company_name="BreezeFlow")
             return system_prompt
         else:
             raise ValueError("Invalid response format")
