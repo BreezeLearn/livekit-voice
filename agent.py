@@ -190,7 +190,7 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
 
     await session.start(
         room=ctx.room,
-        agent=Assistant(insgitructions=systemPrompt),
+        agent=Assistant(instructions=systemPrompt),
         room_input_options=RoomInputOptions(
             noise_cancellation=noise_cancellation.BVC(),
             video_enabled=True,
