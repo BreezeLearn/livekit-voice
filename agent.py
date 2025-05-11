@@ -175,7 +175,7 @@ async def entrypoint(ctx: JobContext):
         voice="alloy",
         instructions="""Affect/personality: A cheerful guide 
 
-Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable.
+Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable and be more energetic , enthusiatic.
 
 Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
 
