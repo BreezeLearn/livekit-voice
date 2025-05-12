@@ -201,7 +201,7 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
     )
 
     await session.generate_reply(
-        instructions="Greet the user and enlighten them about yourself and the company. tell them every possible thing they need to know about the company just like a sales agent would do.",
+        instructions="Greet the user and enlighten them about yourself and the company. ",
     )
 
 
