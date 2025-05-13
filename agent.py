@@ -201,10 +201,7 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
         room_output_options=RoomOutputOptions(transcription_enabled=True),
     )
 
-    await session.generate_reply(
-        instructions="Greet the user and enlighten them about yourself and the company. ",
-        # tell them every possible thing they need to know about the company just like a sales agent would do. the goal is to make the user feel comfortable and confident about the company and its services after the pitch.
-    )
+    await session.say("Hey, I’m your AI guide—here to help you get answers fast, even the ones you might not find on the website. Ask me anything—I’d love to help you.", allow_interruptions=True)
 
 
 if __name__ == "__main__":

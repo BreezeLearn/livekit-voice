@@ -77,7 +77,10 @@ def getAgentDetails(agent_id):
             agent_data = data["data"]
             # company_info = f"{agent_data.get('description', 'No description provided')} — Your name: {agent_data.get('name', 'Unknown')}, Tone: {agent_data.get('tone', 'Not specified')}"
             company_info = f"{agent_data.get('description', 'No description provided')} — Your name: {agent_data.get('name', 'Unknown')}, Tone: {agent_data.get('tone', 'Not specified')}"
-            system_prompt = systemPromptTemplate.format(company_info=company_info, company_name="BreezeFlow")
+            company = agent_data.get("company", "Unknown")
+            company_name = company.get("company_name", "Unknown")
+            
+            system_prompt = systemPromptTemplate.format(company_info=company_info, company_name=company_name)
             return system_prompt
         else:
             raise ValueError("Invalid response format")
