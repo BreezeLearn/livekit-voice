@@ -108,10 +108,10 @@ def getCollectionName(agent_id):
         if "data" in data and "KnowledgeBase" in data["data"]:
             agent_data = data["data"]
             company = agent_data.get("company", "Unknown")
-            company_name = company.get("company_name", "Unknown")
+            companyId = company.get("_id", "Unknown")
             knowledge_base = data["data"]["KnowledgeBase"]
             if knowledge_base and len(knowledge_base) > 0:
-                return knowledge_base[0].get("collectionName"), company_name
+                return knowledge_base[0].get("collectionName"), companyId
         return None
     except Exception as e:
         logger.error(f"Failed to retrieve collection name: {str(e)}")
@@ -128,7 +128,7 @@ def getEmbedding(text):
 
 
 def queryQdrant(query, collection_name, companyId):
-    logger.info(f"Querying Qdrant with collection name: {collection_name}")
+    logger.info(f"Querying Qdrant with collection name: {collection_name} - companyId: {companyId}")
     query_embedding = getEmbedding(query)
     response = client.query_points(
         collection_name=collection_name,

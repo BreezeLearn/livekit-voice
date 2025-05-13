@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import json
+import time
 from livekit import rtc, api
 from livekit.agents import (
     Agent,
@@ -61,6 +62,7 @@ class Assistant(Agent):
             if not collection_name:
                 raise ToolError("Knowledge base not found. Please try again later.")
             response = queryQdrant(query, collection_name, companyId)
+            logger.info(f"Response from Qdrant: {response}")
             if not response or not response.points:
                 raise ToolError("No results found in the knowledge base.")
 
@@ -164,32 +166,11 @@ async def entrypoint(ctx: JobContext):
         ))
         logger.info(f"Participant info: {res.identity}, {res.name}, {res.metadata}")
 
+    start_time = time.time()
     systemPrompt = getAgentDetails(participant.name)
+    elapsed_time = time.time() - start_time
+    logger.info(f"getAgentDetails took {elapsed_time:.2f} seconds")
 
-#     session = AgentSession(
-#         stt=openai.STT(
-#             model="gpt-4o-transcribe",
-#         ),
-#         llm=openai.LLM(model="gpt-4o"),
-#         tts=openai.TTS(
-#         model="gpt-4o-mini-tts",
-#         voice="alloy",
-#         instructions="""Affect/personality: A cheerful guide 
-
-# Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable and be more energetic , enthusiatic.
-
-# Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
-
-# Pause: Brief, purposeful pauses after key instructions (e.g., "cross the street" and "turn right") to allow time for the listener to process the information and follow along.
-
-# Emotion: Warm and supportive, conveying empathy and care, ensuring the listener feels guided and safe throughout the journey."""
-# ,
-#     ),
-#         vad=silero.VAD.load(),
-#         turn_detection=MultilingualModel(),
-#     )
-
-    # logger.info(f"instructions: {systemPrompt}")
     session = AgentSession(
         llm=openai.realtime.RealtimeModel(
             voice="alloy",
