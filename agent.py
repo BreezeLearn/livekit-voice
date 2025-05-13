@@ -171,41 +171,17 @@ async def entrypoint(ctx: JobContext):
     elapsed_time = time.time() - start_time
     logger.info(f"getAgentDetails took {elapsed_time:.2f} seconds")
 
-    # session = AgentSession(
-    #     llm=openai.realtime.RealtimeModel(
-    #         voice="alloy",
-    #         turn_detection=TurnDetection(
-    #             type="semantic_vad",
-    #             eagerness="auto",
-    #             create_response=True,
-    #             interrupt_response=True,
-    #         ),
-    #     )
-    # ) 
-
     session = AgentSession(
-        stt=openai.STT(
-            model="gpt-4o-transcribe",
-        ),
-        llm=openai.LLM(model="gpt-4o"),
-        tts=openai.TTS(
-        model="gpt-4o-mini-tts",
-        voice="alloy",
-        instructions="""Affect/personality: A cheerful guide 
-
-Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable and be more energetic , enthusiatic.
-
-Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
-
-Pause: Brief, purposeful pauses after key instructions (e.g., "cross the street" and "turn right") to allow time for the listener to process the information and follow along.
-
-Emotion: Warm and supportive, conveying empathy and care, ensuring the listener feels guided and safe throughout the journey."""
-,
-    ),
-        vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
-    )
-    
+        llm=openai.realtime.RealtimeModel(
+            voice="alloy",
+            turn_detection=TurnDetection(
+                type="semantic_vad",
+                eagerness="auto",
+                create_response=True,
+                interrupt_response=True,
+            ),
+        )
+    ) 
     await session.start(
         room=ctx.room,
         agent=Assistant(instructions=systemPrompt),
