@@ -107,9 +107,11 @@ def getCollectionName(agent_id):
 
         if "data" in data and "KnowledgeBase" in data["data"]:
             agent_data = data["data"]
+            company = agent_data.get("company", "Unknown")
+            company_name = company.get("company_name", "Unknown")
             knowledge_base = data["data"]["KnowledgeBase"]
             if knowledge_base and len(knowledge_base) > 0:
-                return knowledge_base[0].get("collectionName"), agent_data.get("company")
+                return knowledge_base[0].get("collectionName"), company_name
         return None
     except Exception as e:
         logger.error(f"Failed to retrieve collection name: {str(e)}")
