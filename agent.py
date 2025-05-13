@@ -25,6 +25,7 @@ from livekit.plugins import (
     silero
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from openai.types.beta.realtime.session import TurnDetection
 from prompt import getAgentDetails, queryQdrant, getCollectionName
 
 load_dotenv()
@@ -165,30 +166,41 @@ async def entrypoint(ctx: JobContext):
 
     systemPrompt = getAgentDetails(participant.name)
 
-    session = AgentSession(
-        stt=openai.STT(
-            model="gpt-4o-transcribe",
-        ),
-        llm=openai.LLM(model="gpt-4o"),
-        tts=openai.TTS(
-        model="gpt-4o-mini-tts",
-        voice="alloy",
-        instructions="""Affect/personality: A cheerful guide 
+#     session = AgentSession(
+#         stt=openai.STT(
+#             model="gpt-4o-transcribe",
+#         ),
+#         llm=openai.LLM(model="gpt-4o"),
+#         tts=openai.TTS(
+#         model="gpt-4o-mini-tts",
+#         voice="alloy",
+#         instructions="""Affect/personality: A cheerful guide 
 
-Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable and be more energetic , enthusiatic.
+# Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making the listener feel confident and comfortable and be more energetic , enthusiatic.
 
-Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
+# Pronunciation: Clear, articulate, and steady, ensuring each instruction is easily understood while maintaining a natural, conversational flow.
 
-Pause: Brief, purposeful pauses after key instructions (e.g., "cross the street" and "turn right") to allow time for the listener to process the information and follow along.
+# Pause: Brief, purposeful pauses after key instructions (e.g., "cross the street" and "turn right") to allow time for the listener to process the information and follow along.
 
-Emotion: Warm and supportive, conveying empathy and care, ensuring the listener feels guided and safe throughout the journey."""
-,
-    ),
-        vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
-    )
+# Emotion: Warm and supportive, conveying empathy and care, ensuring the listener feels guided and safe throughout the journey."""
+# ,
+#     ),
+#         vad=silero.VAD.load(),
+#         turn_detection=MultilingualModel(),
+#     )
 
     # logger.info(f"instructions: {systemPrompt}")
+    session = AgentSession(
+        llm=openai.realtime.RealtimeModel(
+            voice="alloy",
+            turn_detection=TurnDetection(
+                type="semantic_vad",
+                eagerness="auto",
+                create_response=True,
+                interrupt_response=True,
+            ),
+        )
+    ) 
     await session.start(
         room=ctx.room,
         agent=Assistant(instructions=systemPrompt),
@@ -201,7 +213,9 @@ Emotion: Warm and supportive, conveying empathy and care, ensuring the listener 
         room_output_options=RoomOutputOptions(transcription_enabled=True),
     )
 
-    await session.say("Hey, I’m your AI guide—here to help you get answers fast, even the ones you might not find on the website. Ask me anything—I’d love to help you.", allow_interruptions=True)
+    await session.generate_reply(
+        instructions="say: Hey, I’m your AI guide—here to help you get answers fast, even the ones you might not find on the website. Ask me anything—I’d love to help you.",
+    )
 
 
 if __name__ == "__main__":
