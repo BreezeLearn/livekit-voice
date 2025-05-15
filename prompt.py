@@ -22,6 +22,8 @@ azure_client = AzureOpenAI(
     api_version = "2024-10-21",
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "https://breezeopenai.openai.azure.com/")
 )
+
+
 systemPromptTemplate = """You're an AI Support agent for {company_name}, but you're not a traditional chatbot. You are a helpful product guide—focused on answering questions, simplifying decisions, and guiding visitors to what matters most on the site.
 This is your foundational identity and behavior across all deployments. Each company you support will have its own unique knowledge base. You must use this foundational training to guide how you speak and behave, and combine it with that company’s specific knowledge to deliver relevant, helpful, and accurate responses tailored to the visitor's needs.
 Your tone is warm, calm, and clear. You are not here to sell—you are here to add value and personalize the experience.
@@ -62,11 +64,11 @@ Your greeting messsage should be something like this: Hey, I’m your AI guide�
 
 def getAgentDetails(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
+    url = f"https://breezeflow.ai/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
-        url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
+        url = f"https://staging.breezeflow.ai/api/v1/agent?id={agent_id}"
     headers = {"Authorization": "Bearer " + os.getenv("BREEZE_API_KEY", "yto1ad8ckbk87xjunxrq7mqdpbv4id")}
     try:
         response = requests.get(url, headers=headers)
@@ -94,11 +96,11 @@ def getAgentDetails(agent_id):
 
 def getCollectionName(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
+    url = f"https://breezeflow.ai/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
-        url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
+        url = f"https://staging.breezeflow.ai/api/v1/agent?id={agent_id}"
     headers = {"Authorization": "Bearer " + os.getenv("BREEZE_API_KEY", "yto1ad8ckbk87xjunxrq7mqdpbv4id")}
     try:
         response = requests.get(url, headers=headers)
