@@ -186,7 +186,7 @@ async def entrypoint(ctx: JobContext):
         room=ctx.room,
         agent=Assistant(instructions=systemPrompt),
         room_input_options=RoomInputOptions(
-            noise_cancellation=noise_cancellation.BVC(),
+            # noise_cancellation=noise_cancellation.BVC(),
             video_enabled=True,
             text_enabled=True,
             audio_enabled=True,
@@ -195,7 +195,7 @@ async def entrypoint(ctx: JobContext):
     )
 
     await session.generate_reply(
-        instructions="say: Hey, I’m your AI guide—here to help you get answers fast, even the ones you might not find on the website. Ask me anything—I’d love to help you.",
+        instructions="say: Hey, I’m your AI guide—here to help you get answers fast, even the ones you might not find on the website. Ask me anything—I’d love to help you."
     )
 
 

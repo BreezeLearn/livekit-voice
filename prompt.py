@@ -64,7 +64,7 @@ Your greeting messsage should be something like this: Hey, Iâ€™m your AI guideâ€
 
 def getAgentDetails(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
+    url = f"https://www.breezeflow.ai/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
@@ -96,7 +96,7 @@ def getAgentDetails(agent_id):
 
 def getCollectionName(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
+    url = f"https://www.breezeflow.ai/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
