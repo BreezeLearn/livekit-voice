@@ -64,11 +64,11 @@ Your greeting messsage should be something like this: Hey, Iâ€™m your AI guideâ€
 
 def getAgentDetails(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://breezeflow.ai/api/v1/agent?id={agent_id}"
+    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
-        url = f"https://staging.breezeflow.ai/api/v1/agent?id={agent_id}"
+        url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
     headers = {"Authorization": "Bearer " + os.getenv("BREEZE_API_KEY", "yto1ad8ckbk87xjunxrq7mqdpbv4id")}
     try:
         response = requests.get(url, headers=headers)
@@ -96,11 +96,11 @@ def getAgentDetails(agent_id):
 
 def getCollectionName(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://breezeflow.ai/api/v1/agent?id={agent_id}"
+    url = f"https://breezeflow.io/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
-        url = f"https://staging.breezeflow.ai/api/v1/agent?id={agent_id}"
+        url = f"https://staging.breezeflow.io/api/v1/agent?id={agent_id}"
     headers = {"Authorization": "Bearer " + os.getenv("BREEZE_API_KEY", "yto1ad8ckbk87xjunxrq7mqdpbv4id")}
     try:
         response = requests.get(url, headers=headers)
