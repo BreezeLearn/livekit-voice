@@ -22,10 +22,10 @@ from livekit.api import RoomParticipantIdentity
 from dotenv import load_dotenv
 from livekit.plugins import (
     openai,
-    # noise_cancellation,
-    # silero
+    noise_cancellation,
+    silero
 )
-# from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from openai.types.beta.realtime.session import TurnDetection
 from prompt import getAgentDetails, queryQdrant, getCollectionName
 
@@ -187,7 +187,7 @@ async def entrypoint(ctx: JobContext):
         room=ctx.room,
         agent=Assistant(instructions=systemPrompt),
         room_input_options=RoomInputOptions(
-            # noise_cancellation=noise_cancellation.BVC(),
+            noise_cancellation=noise_cancellation.BVC(),
             video_enabled=True,
             text_enabled=True,
             audio_enabled=True,
