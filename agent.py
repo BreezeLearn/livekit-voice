@@ -168,6 +168,7 @@ async def entrypoint(ctx: JobContext):
 
     start_time = time.time()
     systemPrompt = getAgentDetails(participant.name)
+    # logger.info(f"System prompt: {systemPrompt}")
     elapsed_time = time.time() - start_time
     logger.info(f"getAgentDetails took {elapsed_time:.2f} seconds")
 

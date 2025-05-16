@@ -7,7 +7,7 @@ livekit-plugins-google
 # optional, only when using LiveKit's turn detection model
 livekit-plugins-turn-detector
 # optional, only if background voice & noise cancellation is needed
-livekit-plugins-noise-cancellation
+# livekit-plugins-noise-cancellation
 python-dotenv~=1.0
 fastapi
 uvicorn
