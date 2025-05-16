@@ -22,10 +22,10 @@ from livekit.api import RoomParticipantIdentity
 from dotenv import load_dotenv
 from livekit.plugins import (
     openai,
-    noise_cancellation,
-    silero
+    # noise_cancellation,
+    # silero
 )
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+# from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from openai.types.beta.realtime.session import TurnDetection
 from prompt import getAgentDetails, queryQdrant, getCollectionName
 
