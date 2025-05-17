@@ -180,8 +180,7 @@ async def entrypoint(ctx: JobContext):
                 eagerness="auto",
                 create_response=True,
                 interrupt_response=True,
-            ),
-            temperature=0.8
+            )
         )
     ) 
     await session.start(
