@@ -180,7 +180,7 @@ async def entrypoint(ctx: JobContext):
                 eagerness="auto",
                 create_response=True,
                 interrupt_response=True,
-            ),
+            )
         )
     ) 
     await session.start(
@@ -196,7 +196,7 @@ async def entrypoint(ctx: JobContext):
     )
 
     await session.generate_reply(
-        instructions="say: Hey, I’m your AI guide—here to help you get answers fast, even the ones you might not find on the website. Ask me anything—I’d love to help you."
+        instructions="say: Hey, I’m your AI guide—here to help you get answers fast, even the ones you might not find on the website. What brings you here today?"
     )
 
 
