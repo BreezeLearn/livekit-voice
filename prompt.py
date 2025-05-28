@@ -95,7 +95,7 @@ Never push CTAs unless directly asked or it feels like a natural progression in 
 
 def getAgentDetails(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://www.breezeflow.ai/api/v1/agent?id={agent_id}"
+    url = f"https://www.app.breezeflow.ai/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
@@ -127,7 +127,7 @@ def getAgentDetails(agent_id):
 
 def getCollectionName(agent_id):
     is_staging = os.getenv("IS_STAGING", "false")
-    url = f"https://www.breezeflow.ai/api/v1/agent?id={agent_id}"
+    url = f"https://app.breezeflow.ai/api/v1/agent?id={agent_id}"
 
     # Check if the environment is staging
     if is_staging.lower() == "true":
@@ -143,6 +143,7 @@ def getCollectionName(agent_id):
             company = agent_data.get("company", "Unknown")
             companyId = company.get("_id", "Unknown")
             knowledge_base = data["data"]["KnowledgeBase"]
+            
             if knowledge_base and len(knowledge_base) > 0:
                 return knowledge_base[0].get("collectionName"), companyId
         return None
