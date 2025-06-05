@@ -27,7 +27,7 @@ from livekit.plugins import (
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from openai.types.beta.realtime.session import TurnDetection
-from prompt import getAgentDetails, queryQdrant, getCollectionName
+from new_prompt import getAgentDetails, queryQdrant, getCollectionName
 
 load_dotenv()
 logger = logging.getLogger("voice-agent")
