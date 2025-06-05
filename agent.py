@@ -175,6 +175,7 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         llm=openai.realtime.RealtimeModel(
             voice="alloy",
+            model="gpt-4o-realtime-preview-2025-06-03",
             turn_detection=TurnDetection(
                 type="semantic_vad",
                 eagerness="auto",
